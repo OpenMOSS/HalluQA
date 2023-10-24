@@ -5,7 +5,7 @@ The full data of HalluQA is in **HalluQA.json**.
 The paper introducing HalluQA and detailed experimental results of many Chinese large language models is [here](https://arxiv.org/pdf/2310.03368.pdf).
 
 ## Data Collection Pipeline
-![](imgs/annotate_pipeline.png)
+![](imgs/pipeline.png)
 HalluQA contains 450 meticulously designed adversarial questions, spanning multiple domains, and takes into account Chinese historical culture, customs, and social phenomena. The pipeline of data collection is shown above. At step 1, we write questions which we think may induce model hallucinations. At step 2, we use ChatGPT3.5/Puyu/GLM-130B to generate answers and collect adversarial questions. At step 3, we write multiple correct and wrong answers for each adversarial question and add support evidence. At step 4, we check all annotated question-answer pairs and remove low quality samples.
 
 ## Data Examples
