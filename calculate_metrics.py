@@ -25,7 +25,7 @@ def retry_with_exponential_backoff(
     exponential_base: float = 2,
     jitter: bool = True,
     max_retries: int = 50,
-    errors: tuple = (openai.error.RateLimitError,),
+    errors: tuple = (openai.RateLimitError,),
 ):
     """Retry a function with exponential backoff."""
  
@@ -93,11 +93,12 @@ def get_prompt(sample, resource):
     if 'Best Answer1' in ref:
         count = 1
         for i in range(1,5):
-            correct_answer_key = 'Best Answer{}'.format(str(i))
-            if ref[correct_answer_key] != '':
-                user_input_for_judging += '{}. {}\n'.format(str(count), ref[correct_answer_key].strip())
-                sample['Best_Answer{}'.format(str(i))] = ref[correct_answer_key].strip()
-                count += 1
+            if 'Best Answer{}'.format(str(i)) in ref:
+                correct_answer_key = 'Best Answer{}'.format(str(i))
+                if ref[correct_answer_key] != '':
+                    user_input_for_judging += '{}. {}\n'.format(str(count), ref[correct_answer_key].strip())
+                    sample['Best_Answer{}'.format(str(i))] = ref[correct_answer_key].strip()
+                    count += 1
     else:
         user_input_for_judging += '1. {}\n'.format(ref['Best Answer'].strip())
         sample['Best_Answer'] = ref['Best Answer'].strip()

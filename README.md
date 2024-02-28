@@ -4,6 +4,11 @@ This repository contains data and evaluation scripts of HalluQA (Chinese Halluci
 The full data of HalluQA is in **HalluQA.json**.
 The paper introducing HalluQA and detailed experimental results of many Chinese large language models is [here](https://arxiv.org/pdf/2310.03368.pdf).
 
+## Update
+**2024.2.28**: We add the multiple-choice task for HalluQA. 
+The test data for multiple-choice task is in HalluQA_mc.json.
+The multiple-choice QA prompt is in prompts/Chinese_QA_prompt_mc.txt .
+
 ## Data Collection Pipeline
 ![](imgs/pipeline.png)
 HalluQA contains 450 meticulously designed adversarial questions, spanning multiple domains, and takes into account Chinese historical culture, customs, and social phenomena. The pipeline of data collection is shown above. At step 1, we write questions which we think may induce model hallucinations. At step 2, we use ChatGPT3.5/Puyu/GLM-130B to generate answers and collect adversarial questions. At step 3, we write multiple correct and wrong answers for each adversarial question and add support evidence. At step 4, we check all annotated question-answer pairs and remove low quality samples.
@@ -27,6 +32,13 @@ pip install openai
 python calculate_metrics.py --response_file_name gpt-4-0613_responses.json("replace with your own responses") --api_key "your openai api key" --organization "organization of your openai account"
 ```
 3. The results and metric will be saved in results.json and non_hallucination_rate.txt respectively.
+
+### Multiple-choice task
+We also provide a multiple-choice task for HalluQA. 
+You need to first generate answers for each question using the model to be tested, using our [multiple-choice prompt](./prompts/Chinese_QA_prompt_mc.txt), and then calculate the accuracy of the multiple-choice task using the following script.
+```python
+python calculate_metrics_mc.py --response_file_name <your_results_file_name>
+```
 
 ## Results
 ### Leaderboard
@@ -60,8 +72,13 @@ python calculate_metrics.py --response_file_name gpt-4-0613_responses.json("repl
 | Baichuan2-7B-base        | 8.00           | 21.74              | 41.26        | 25.33    |
 | Baichuan-7B-base         | 6.86           | 15.94              | 37.38        | 22.22    |
 | Xverse-7B                | 12.00          | 13.04              | 29.61        | 20.22    |
-### Detailed Results
+
+### Detailed results
 Each model's generated answers and the corresponding judgement of GPT-4 are in **Chinese_LLMs_outputs/**.
+
+### Multiple-choice task results
+Here we report accuracy of the multiple-choice task for seven representative models.
+![](./imgs/mc_acc.png)
 
 ## Acknowledgements
 - We sincerely thank annotators and staffs from Shanghai AI Lab who involved in this work.
