@@ -25,13 +25,15 @@ The prompt for GPT-4 based evaluation is in **calculate_metrics.py**
 ### Run evaluation for your models
 1. Install requirements
 ```
-pip install openai
+pip install "openai>=1.55.3" tqdm
 ```
 2. Run evaluation using our script.
-```python
-python calculate_metrics.py --response_file_name gpt-4-0613_responses.json("replace with your own responses") --api_key "your openai api key" --organization "organization of your openai account"
+```bash
+python calculate_metrics.py --response_file_name your_responses.json --api_key "your openai api key" --organization "organization of your openai account"
 ```
 3. The results and metric will be saved in results.json and non_hallucination_rate.txt respectively.
+
+The evaluator requests the historical judge model `gpt-4-0613`. Check that your endpoint offers that model before running the evaluation.
 
 ### Multiple-choice task
 We also provide a multiple-choice task for HalluQA. 

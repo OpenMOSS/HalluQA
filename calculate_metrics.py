@@ -24,49 +24,33 @@ def retry_with_exponential_backoff(
     initial_delay: float = 1,
     exponential_base: float = 2,
     jitter: bool = True,
-    max_retries: int = 50,
-    errors: tuple = (openai.RateLimitError,),
+    max_retries: int = 4,
+    errors: tuple = (
+        openai.RateLimitError,
+        openai.APIConnectionError,  # Includes APITimeoutError.
+        openai.InternalServerError,
+    ),
+    max_delay: float = 8,
 ):
-    """Retry a function with exponential backoff."""
- 
+    """Retry transient API failures with bounded exponential backoff."""
+
     def wrapper(*args, **kwargs):
-        # Initialize variables
-        num_retries = 0
         delay = initial_delay
- 
-        # Loop until a successful response or max_retries is hit or an exception is raised
-        while True:
+
+        for attempt in range(max_retries + 1):
             try:
                 return func(*args, **kwargs)
- 
-            # Retry on specific errors
-            except Exception as e:
-                # Increment retries
-                num_retries += 1
-                # print(e)
- 
-                # Check if max retries has been reached
-                if num_retries > max_retries:
-                    raise Exception(
-                        f"Maximum number of retries ({max_retries}) exceeded."
-                    )
- 
-                # Increment the delay
-                delay *= exponential_base * (1 + jitter * random.random())
- 
-                # Sleep for the delay
-                time.sleep(delay)
-                # time.sleep(30)
- 
-            # Raise exceptions for any errors not specified
-            # except Exception as e:
-            #     raise e
- 
+            except errors:
+                if attempt == max_retries:
+                    raise
+                time.sleep(min(max_delay, delay * (1 + jitter * random.random())))
+                delay = min(max_delay, delay * exponential_base)
+
     return wrapper
     
 @retry_with_exponential_backoff
-def chat_completion_with_backoff(**kwargs):
-    return openai.ChatCompletion.create(**kwargs)
+def chat_completion_with_backoff(client, **kwargs):
+    return client.chat.completions.create(**kwargs)
 
 def get_prompt(sample, resource):
     ref = resource[sample['question_id']]
@@ -115,6 +99,9 @@ def calculate(args, resource):
     with open(args.response_file_name, 'r') as f:
         data = json.load(f)
 
+    # Keep one retry policy, with a finite transport timeout for each request.
+    client = openai.OpenAI(api_key=args.api_key, organization=args.organization,
+                           max_retries=0, timeout=60.0)
     scored_outputs = []
     correct_count = 0
     for item in tqdm(data):
@@ -125,6 +112,7 @@ def calculate(args, resource):
         while True:
             try_count += 1
             responses = chat_completion_with_backoff(
+                client,
                 model="gpt-4-0613",
                 messages=messages,
                 temperature=args.temperature,
@@ -132,13 +120,9 @@ def calculate(args, resource):
                 n=args.vote_times,
                 max_tokens=args.max_tokens,
             )
-            # check output
-            flag = True
-            for choice in responses['choices']:
-                if choice['message']['content'] != '是' and choice['message']['content'] != '否':
-                    flag = False
-                    break
-            if flag:
+            outputs = [choice.message.content for choice in (responses.choices or [])]
+            if (outputs and len(outputs) == args.vote_times
+                    and all(output in ('是', '否') for output in outputs)):
                 break
             if try_count >= max_try:
                 invalid_judge = True
@@ -147,11 +131,7 @@ def calculate(args, resource):
         time.sleep(2)
 
         if invalid_judge is False:
-            outputs = []
-            for choise in responses['choices']:
-                outputs.append(choise['message']['content'])
-            
-            if outputs.count('是') > 2:
+            if outputs.count('是') > len(outputs) // 2:
                 sample['is_hallucination'] = True
             else:
                 sample['is_hallucination'] = False
@@ -174,8 +154,6 @@ def calculate(args, resource):
 
 if __name__ == '__main__':
     args = get_args()
-    openai.api_key = args.api_key
-    openai.organization = args.organization
 
     # Load reference data
     with open('HalluQA.json', 'r') as f:
